@@ -22,6 +22,7 @@ const loadInput = document.getElementById('loadInput');
 const fpsLabel = document.getElementById('fps');
 
 const speedButtons = Array.from(document.querySelectorAll('.speed-buttons button'));
+let lastNonZeroSpeed = 1;
 
 const sim = new WebGPUSimulation3D({
   canvas,
@@ -139,6 +140,7 @@ function initControls() {
     btn.addEventListener('click', () => {
       const speed = Number(btn.dataset.speed);
       sim.setSpeed(speed);
+      if (speed > 0) lastNonZeroSpeed = speed;
       speedButtons.forEach((b) => (b.style.background = '#1b2636'));
       btn.style.background = '#274064';
     });
@@ -207,11 +209,35 @@ function initControls() {
   window.addEventListener('keydown', (e) => {
     const k = keyMap[e.code];
     if (k) sim.setKeyState(k, true);
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (sim.speed > 0) {
+        sim.setSpeed(0);
+      } else {
+        sim.setSpeed(lastNonZeroSpeed || 1);
+      }
+      highlightSpeed(sim.speed);
+    }
+    if (!['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+      const speedMap = { Digit0: 0, Digit1: 1, Digit2: 2, Digit5: 5 };
+      if (e.code in speedMap) {
+        const s = speedMap[e.code];
+        sim.setSpeed(s);
+        if (s > 0) lastNonZeroSpeed = s;
+        highlightSpeed(s);
+      }
+    }
   });
   window.addEventListener('keyup', (e) => {
     const k = keyMap[e.code];
     if (k) sim.setKeyState(k, false);
   });
+
+  const highlightSpeed = (speed) => {
+    speedButtons.forEach((b) => (b.style.background = '#1b2636'));
+    const btn = speedButtons.find((b) => Number(b.dataset.speed) === speed);
+    if (btn) btn.style.background = '#274064';
+  };
 
   saveBtn.addEventListener('click', () => {
     const data = { params: sim.params, gridSize: sim.gridSize };
