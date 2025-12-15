@@ -4,6 +4,7 @@ import {
   SPEED_OPTIONS,
   INITIAL_YAW,
   INITIAL_PITCH,
+  INITIAL_DISTANCE,
 } from './config/constants.js';
 import { DEFAULT_PARAMS, PARAM_SPECS } from './config/defaults.js';
 import { WebGPUSimulation3D } from './core/WebGPUSimulation3D.js';
@@ -28,6 +29,7 @@ const sim = new WebGPUSimulation3D({
   gridSize: DEFAULT_GRID_SIZE,
   yaw: INITIAL_YAW,
   pitch: INITIAL_PITCH,
+  distance: INITIAL_DISTANCE,
 });
 
 initControls();
@@ -113,6 +115,53 @@ function initControls() {
   pitchInput.addEventListener('input', (e) => updatePitch(parseFloat(e.target.value)));
   updateYaw(INITIAL_YAW);
   updatePitch(INITIAL_PITCH);
+
+  // Canvas interactions: wheel zoom, drag rotate
+  let dragging = false;
+  let lastX = 0;
+  let lastY = 0;
+  canvas.addEventListener(
+    'wheel',
+    (e) => {
+      e.preventDefault();
+      // 반대 방향 줌
+      sim.adjustDistance(e.deltaY * 0.001);
+    },
+    { passive: false },
+  );
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  canvas.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return; // 좌클릭 회전
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+  window.addEventListener('mouseup', () => {
+    dragging = false;
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    sim.adjustRotation(dx, dy); // 지구본 스타일: 드래그 방향대로 회전
+    yawInput.value = sim.yaw.toFixed(0);
+    pitchInput.value = sim.pitch.toFixed(0);
+    updateYaw(sim.yaw);
+    updatePitch(sim.pitch);
+  });
+
+  // WASD pan
+  const keyMap = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
+  window.addEventListener('keydown', (e) => {
+    const k = keyMap[e.code];
+    if (k) sim.setKeyState(k, true);
+  });
+  window.addEventListener('keyup', (e) => {
+    const k = keyMap[e.code];
+    if (k) sim.setKeyState(k, false);
+  });
 
   saveBtn.addEventListener('click', () => {
     const data = { params: sim.params, gridSize: sim.gridSize };

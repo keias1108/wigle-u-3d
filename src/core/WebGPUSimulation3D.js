@@ -5,6 +5,10 @@ import {
   KERNEL_SIZE,
   REDUCE_SIZE,
   SEED_ENERGY_MAX,
+  CAMERA_BOUNDS,
+  INITIAL_DISTANCE,
+  PAN_SPEED,
+  ROTATE_SENSITIVITY,
 } from '../config/constants.js';
 
 export class WebGPUSimulation3D {
@@ -14,12 +18,17 @@ export class WebGPUSimulation3D {
     gridSize = DEFAULT_GRID_SIZE,
     yaw = 0,
     pitch = 0,
+    distance = INITIAL_DISTANCE,
   }) {
     this.canvas = canvas;
     this.params = { ...initialParams };
     this.gridSize = gridSize;
     this.yaw = yaw;
     this.pitch = pitch;
+    this.distance = distance;
+    this.offsetX = 0;
+    this.offsetY = 0;
+    this.target = { x: 0.5, y: 0.5, z: 0.5 };
 
     this.adapter = null;
     this.device = null;
@@ -48,6 +57,9 @@ export class WebGPUSimulation3D {
     this.reduceBufferSize = 0;
     this.isReducing = false;
     this.readbackBuffer = null;
+
+    this.keyState = { w: false, a: false, s: false, d: false };
+    this.lastStepTime = performance.now();
   }
 
   async init() {
@@ -74,7 +86,7 @@ export class WebGPUSimulation3D {
     });
 
     this.paramBuffer = this.device.createBuffer({
-      size: 96, // 6 vec4 blocks * 16 bytes
+      size: 128, // up to 8 vec4 blocks * 16 bytes
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
@@ -114,6 +126,25 @@ export class WebGPUSimulation3D {
     this.yaw = yawDeg;
     this.pitch = pitchDeg;
     this.#writeParamsBuffer();
+  }
+
+  adjustRotation(dx, dy) {
+    this.yaw += dx * ROTATE_SENSITIVITY * (180 / Math.PI);
+    this.pitch += dy * ROTATE_SENSITIVITY * (180 / Math.PI);
+    const limit = 179.0;
+    this.pitch = Math.max(-limit, Math.min(limit, this.pitch));
+    this.#writeParamsBuffer();
+  }
+
+  adjustDistance(delta) {
+    this.distance = Math.min(CAMERA_BOUNDS.max, Math.max(CAMERA_BOUNDS.min, this.distance * (1 + delta)));
+    this.#writeParamsBuffer();
+  }
+
+  setKeyState(key, value) {
+    if (key in this.keyState) {
+      this.keyState[key] = value;
+    }
   }
 
   setSpeed(speed) {
@@ -279,11 +310,17 @@ export class WebGPUSimulation3D {
     f32[18] = inv;
     f32[19] = inv;
 
-    // misc vec4<f32>
+    // misc vec4<f32> (yaw, pitch, distance, seed)
     f32[20] = (this.yaw * Math.PI) / 180;
     f32[21] = (this.pitch * Math.PI) / 180;
-    f32[22] = performance.now() * 0.001;
+    f32[22] = this.distance;
     f32[23] = Math.random();
+
+    // camera vec4<f32> (offsetX, offsetY, time, unused)
+    f32[24] = this.offsetX;
+    f32[25] = this.offsetY;
+    f32[26] = performance.now() * 0.001;
+    f32[27] = 0.0;
 
     this.device.queue.writeBuffer(this.paramBuffer, 0, buffer);
   }
@@ -297,6 +334,11 @@ export class WebGPUSimulation3D {
   }
 
   #step() {
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - this.lastStepTime) * 0.001);
+    this.#updateCamera(dt);
+    this.lastStepTime = now;
+
     if (this.speed > 0) {
       for (let i = 0; i < this.speed; i++) {
         this.#computePass();
@@ -308,6 +350,32 @@ export class WebGPUSimulation3D {
     }
     this.#renderPass();
     this.#updateFps();
+  }
+
+  #updateCamera(dt) {
+    const yawRad = (this.yaw * Math.PI) / 180;
+    const forward = { x: Math.sin(yawRad), z: Math.cos(yawRad) };
+    const right = { x: forward.z, z: -forward.x };
+    const speed = PAN_SPEED * dt;
+    if (this.keyState.w) {
+      this.offsetX += forward.x * speed;
+      this.offsetY += forward.z * speed;
+    }
+    if (this.keyState.s) {
+      this.offsetX -= forward.x * speed;
+      this.offsetY -= forward.z * speed;
+    }
+    if (this.keyState.a) {
+      this.offsetX -= right.x * speed;
+      this.offsetY -= right.z * speed;
+    }
+    if (this.keyState.d) {
+      this.offsetX += right.x * speed;
+      this.offsetY += right.z * speed;
+    }
+    const maxOffset = 0.5;
+    this.offsetX = Math.max(-maxOffset, Math.min(maxOffset, this.offsetX));
+    this.offsetY = Math.max(-maxOffset, Math.min(maxOffset, this.offsetY));
   }
 
   #computePass() {
@@ -413,6 +481,7 @@ struct SimParams {
   economy : vec4<f32>,
   instab : vec4<f32>,
   misc : vec4<f32>,
+  camera : vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> params : SimParams;
@@ -498,6 +567,8 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
   let diffusionRate = params.economy.z;
   let fissionThreshold = params.economy.w;
   let instability = params.instab.x;
+  let time = params.camera.z;
+  let seed = params.misc.w;
 
   let currentEnergy = textureLoad(inputTex, coord, 0).x;
 
@@ -532,11 +603,11 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
   var fissionNoise = 0.0;
   if (currentEnergy > fissionThreshold) {
     let excess = (currentEnergy - fissionThreshold) / (1.0 - fissionThreshold);
-    let chaos = sin((f32(coord.x + coord.y + coord.z) + params.misc.z) * 0.5);
+    let chaos = sin((f32(coord.x + coord.y + coord.z) + time) * 0.5);
     fissionNoise = chaos * excess * 0.1;
   }
 
-  let noise = (hash31(gid + vec3<u32>(u32(params.misc.w * 100000.0))) - 0.5) * 0.001;
+  let noise = (hash31(gid + vec3<u32>(u32(seed * 100000.0))) - 0.5) * 0.001;
 
   let deltaEnergy = growthRate * growth - metabolism + diffusion + fissionNoise + noise;
   var newEnergy = currentEnergy + deltaEnergy;
@@ -556,6 +627,7 @@ struct SimParams {
   economy : vec4<f32>,
   instab : vec4<f32>,
   misc : vec4<f32>,
+  camera : vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> params : SimParams;
@@ -597,6 +669,7 @@ struct SimParams {
   economy : vec4<f32>,
   instab : vec4<f32>,
   misc : vec4<f32>,
+  camera : vec4<f32>,
 };
 
 @group(0) @binding(0) var samp : sampler;
@@ -682,8 +755,13 @@ fn fs(in : VertexOut) -> @location(0) vec4<f32> {
   let uv = in.uv * 2.0 - vec2<f32>(1.0, 1.0);
   let yaw = params.misc.x;
   let pitch = params.misc.y;
-  let dir = normalize(rotateDir(vec3<f32>(uv.x, uv.y, 1.5), yaw, pitch));
-  let ro = vec3<f32>(0.5, 0.5, 0.5);
+  let distance = params.misc.z;
+  let offset = vec2<f32>(params.camera.x, params.camera.y);
+  let center = vec3<f32>(0.5 + offset.x, 0.5 + offset.y, 0.5);
+  let dirLocal = normalize(vec3<f32>(uv.x, uv.y, 1.0));
+  let dir = rotateDir(dirLocal, yaw, pitch);
+  let camDir = rotateDir(vec3<f32>(0.0, 0.0, 1.0), yaw, pitch);
+  let ro = center - camDir * distance; // orbit camera outside box
   let boundsMin = vec3<f32>(0.0, 0.0, 0.0);
   let boundsMax = vec3<f32>(1.0, 1.0, 1.0);
   let hit = intersectAabb(ro, dir, boundsMin, boundsMax);
@@ -697,7 +775,7 @@ fn fs(in : VertexOut) -> @location(0) vec4<f32> {
   var t = tStart;
   var maxE = 0.0;
   for (var i: i32 = 0; i < steps; i = i + 1) {
-    let pos = ro + dir * t;
+    let pos = fract(ro + dir * t);
     let e = textureSampleLevel(fieldTex, samp, pos, 0.0).x;
     if (e > maxE) { maxE = e; }
     t = t + dt;
