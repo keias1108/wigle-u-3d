@@ -1,0 +1,18 @@
+{
+  "params": {
+    "innerRadius": 3.5,
+    "innerStrength": 1.01,
+    "outerRadius": 7.5,
+    "outerStrength": -0.99,
+    "growthCenter": -0.17,
+    "growthWidth": 0.056799999999999996,
+    "growthRate": 0.448,
+    "decayRate": 0.139,
+    "diffusionRate": 0.139,
+    "fissionThreshold": 0.95,
+    "suppressionFactor": 1,
+    "instabilityFactor": 1,
+    "globalAverage": 0.000057853758335113525
+  },
+  "gridSize": 32
+}

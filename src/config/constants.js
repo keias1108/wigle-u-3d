@@ -12,6 +12,11 @@ export const DEFAULT_GRID_SIZE = 32;
 export const KERNEL_SIZE = 10;
 export const GLOBAL_AVG_INTERVAL = 2; // frames between reductions
 
+// Workgroup size for compute shaders (NVIDIA optimal: 8×8×4 = 256 threads)
+export const WORKGROUP_SIZE_X = 8;
+export const WORKGROUP_SIZE_Y = 8;
+export const WORKGROUP_SIZE_Z = 4;
+
 export const SPEED_OPTIONS = [
   { label: '⏸ 0x', value: 0 },
   { label: '▶ 1x', value: 1 },
