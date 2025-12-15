@@ -3,7 +3,6 @@ import {
   DEFAULT_GRID_SIZE,
   GLOBAL_AVG_INTERVAL,
   KERNEL_SIZE,
-  REDUCE_SIZE,
   SEED_ENERGY_MAX,
   CAMERA_BOUNDS,
   INITIAL_DISTANCE,
@@ -57,6 +56,8 @@ export class WebGPUSimulation3D {
     this.reduceBufferSize = 0;
     this.isReducing = false;
     this.readbackBuffer = null;
+    this.reduceTextures = [];
+    this.reduceParamBuffer = null;
 
     this.keyState = { w: false, a: false, s: false, d: false };
     this.lastStepTime = performance.now();
@@ -185,19 +186,35 @@ export class WebGPUSimulation3D {
   }
 
   #createReduceResources() {
-    const entries = REDUCE_SIZE * REDUCE_SIZE * REDUCE_SIZE;
-    const byteLength = entries * 4;
-    if (!this.reduceBuffer || this.reduceBufferSize < byteLength) {
-      this.reduceBuffer = this.device.createBuffer({
-        size: Math.max(byteLength, 256),
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+    // build downsample chain of textures down to 1x1x1
+    this.reduceChain = [];
+    this.reduceTextures = [];
+    let size = this.gridSize;
+    while (size > 1) {
+      const next = Math.max(1, Math.floor(size / 2));
+      this.reduceChain.push({ from: size, to: next });
+      const tex = this.device.createTexture({
+        dimension: '3d',
+        size: { width: next, height: next, depthOrArrayLayers: next },
+        format: 'r32float',
+        usage:
+          GPUTextureUsage.STORAGE_BINDING |
+          GPUTextureUsage.TEXTURE_BINDING |
+          GPUTextureUsage.COPY_SRC,
       });
-      this.readbackBuffer = this.device.createBuffer({
-        size: Math.max(byteLength, 256),
-        usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-      });
-      this.reduceBufferSize = Math.max(byteLength, 256);
+      this.reduceTextures.push(tex);
+      size = next;
     }
+
+    this.reduceParamBuffer = this.device.createBuffer({
+      size: 16,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    this.readbackBuffer = this.device.createBuffer({
+      size: 256,
+      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+    });
   }
 
   #createPipelines() {
@@ -262,13 +279,15 @@ export class WebGPUSimulation3D {
     });
   }
 
-  #createReduceBindGroup(texture) {
+  #createReduceBindGroup(input, output, toSize) {
+    const outSize = new Uint32Array([toSize, toSize, toSize, 0]);
+    this.device.queue.writeBuffer(this.reduceParamBuffer, 0, outSize.buffer);
     return this.device.createBindGroup({
       layout: this.reducePipeline.getBindGroupLayout(0),
       entries: [
-        { binding: 0, resource: { buffer: this.paramBuffer } },
-        { binding: 1, resource: texture.createView({ dimension: '3d' }) },
-        { binding: 2, resource: { buffer: this.reduceBuffer } },
+        { binding: 0, resource: { buffer: this.reduceParamBuffer } },
+        { binding: 1, resource: input.createView({ dimension: '3d' }) },
+        { binding: 2, resource: output.createView({ dimension: '3d' }) },
       ],
     });
   }
@@ -400,28 +419,39 @@ export class WebGPUSimulation3D {
   async #reducePassAndRead() {
     if (this.isReducing) return;
     this.isReducing = true;
-    const texture = this.fieldTextures[this.currentIndex];
-    const bindGroup = this.#createReduceBindGroup(texture);
-    const encoder = this.device.createCommandEncoder();
-    const pass = encoder.beginComputePass();
-    pass.setPipeline(this.reducePipeline);
-    pass.setBindGroup(0, bindGroup);
-    const wg = 4;
-    const gx = Math.ceil(REDUCE_SIZE / wg);
-    const gy = Math.ceil(REDUCE_SIZE / wg);
-    const gz = Math.ceil(REDUCE_SIZE / wg);
-    pass.dispatchWorkgroups(gx, gy, gz);
-    pass.end();
-    encoder.copyBufferToBuffer(this.reduceBuffer, 0, this.readbackBuffer, 0, this.reduceBufferSize);
-    this.device.queue.submit([encoder.finish()]);
+    const commandEncoder = this.device.createCommandEncoder();
+    let currentInput = this.fieldTextures[this.currentIndex];
+
+    // run reduction chain
+    for (let i = 0; i < this.reduceChain.length; i++) {
+      const { to } = this.reduceChain[i];
+      const outputTex = this.reduceTextures[i];
+      const bindGroup = this.#createReduceBindGroup(currentInput, outputTex, to);
+      const pass = commandEncoder.beginComputePass();
+      pass.setPipeline(this.reducePipeline);
+      pass.setBindGroup(0, bindGroup);
+      const wg = 4;
+      const gx = Math.ceil(to / wg);
+      const gy = Math.ceil(to / wg);
+      const gz = Math.ceil(to / wg);
+      pass.dispatchWorkgroups(gx, gy, gz);
+      pass.end();
+      currentInput = outputTex;
+    }
+
+    // copy final 1x1x1 to buffer
+    commandEncoder.copyTextureToBuffer(
+      { texture: currentInput },
+      { buffer: this.readbackBuffer, bytesPerRow: 256, rowsPerImage: 1 },
+      { width: 1, height: 1, depthOrArrayLayers: 1 },
+    );
+    this.device.queue.submit([commandEncoder.finish()]);
 
     try {
       await this.readbackBuffer.mapAsync(GPUMapMode.READ);
       const slice = this.readbackBuffer.getMappedRange();
-      const values = new Float32Array(slice.slice(0, REDUCE_SIZE * REDUCE_SIZE * REDUCE_SIZE * 4));
-      let sum = 0;
-      for (let i = 0; i < values.length; i++) sum += values[i];
-      const avg = sum / values.length;
+      const values = new Float32Array(slice.slice(0, 4));
+      const avg = values[0];
       this.readbackBuffer.unmap();
       this.params.globalAverage = avg;
       this.#writeParamsBuffer();
@@ -620,42 +650,37 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
 
   #reduceShader() {
     return /* wgsl */ `
-struct SimParams {
-  dims : vec4<u32>,
-  inner : vec4<f32>,
-  growthA : vec4<f32>,
-  economy : vec4<f32>,
-  instab : vec4<f32>,
-  misc : vec4<f32>,
-  camera : vec4<f32>,
+struct ReduceParams {
+  outSize : vec4<u32>,
 };
 
-@group(0) @binding(0) var<uniform> params : SimParams;
+@group(0) @binding(0) var<uniform> reduce : ReduceParams;
 @group(0) @binding(1) var inputTex : texture_3d<f32>;
-@group(0) @binding(2) var<storage, read_write> outBuf : array<f32>;
-
-const REDUCE : u32 = ${REDUCE_SIZE};
+@group(0) @binding(2) var outputTex : texture_storage_3d<r32float, write>;
 
 @compute @workgroup_size(4, 4, 4)
 fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
-  if (any(gid >= vec3<u32>(REDUCE))) {
+  let outSize = reduce.outSize.xyz;
+  if (any(gid >= outSize)) {
     return;
   }
-  let dims = params.dims.xyz;
-  let block = dims / vec3<u32>(REDUCE);
-
+  let inSize = textureDimensions(inputTex);
+  let base = vec3<i32>(gid) * 2;
   var sum = 0.0;
-  for (var z : u32 = 0u; z < block.z; z = z + 1u) {
-    for (var y : u32 = 0u; y < block.y; y = y + 1u) {
-      for (var x : u32 = 0u; x < block.x; x = x + 1u) {
-        let coord = vec3<u32>(gid.x * block.x + x, gid.y * block.y + y, gid.z * block.z + z);
-        sum = sum + textureLoad(inputTex, vec3<i32>(coord), 0).x;
+  var count = 0.0;
+  for (var z : i32 = 0; z < 2; z = z + 1) {
+    for (var y : i32 = 0; y < 2; y = y + 1) {
+      for (var x : i32 = 0; x < 2; x = x + 1) {
+        let coord = base + vec3<i32>(x, y, z);
+        if (all(coord < vec3<i32>(inSize))) {
+          sum = sum + textureLoad(inputTex, coord, 0).x;
+          count = count + 1.0;
+        }
       }
     }
   }
-  let samples = f32(block.x * block.y * block.z);
-  let idx = gid.x + gid.y * REDUCE + gid.z * REDUCE * REDUCE;
-  outBuf[idx] = sum / samples;
+  let avg = sum / max(count, 1.0);
+  textureStore(outputTex, vec3<i32>(gid), vec4<f32>(avg, 0.0, 0.0, 1.0));
 }
 `;
   }

@@ -1,15 +1,15 @@
 export const GRID_SIZE_PRESETS = [
+  { label: '32³ (fastest)', value: 32 },
   { label: '64³ (fast)', value: 64 },
   { label: '96³ (safe)', value: 96 },
   { label: '128³', value: 128 },
   { label: '256³ (heavy)', value: 256 },
 ];
 
-export const DEFAULT_GRID_SIZE = 64;
+export const DEFAULT_GRID_SIZE = 32;
 
 // 3D kernel radius kept small to contain sampling cost while preserving rule shape.
 export const KERNEL_SIZE = 10;
-export const REDUCE_SIZE = 8; // for global average reduction (assumes grid divisible by 8)
 export const GLOBAL_AVG_INTERVAL = 2; // frames between reductions
 
 export const SPEED_OPTIONS = [
