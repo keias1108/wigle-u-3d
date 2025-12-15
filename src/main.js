@@ -45,45 +45,95 @@ function initControls() {
     gridSizeSelect.appendChild(option);
   });
 
-  PARAM_SPECS.forEach((spec) => {
+  const makeControl = (spec) => {
     const wrapper = document.createElement('div');
     wrapper.className = 'param';
     const label = document.createElement('label');
+    label.textContent = spec.label;
     const valueSpan = document.createElement('span');
     valueSpan.className = 'value';
     valueSpan.id = `value-${spec.key}`;
-    label.textContent = spec.label;
     label.appendChild(valueSpan);
-    const input = document.createElement('input');
-    input.type = 'range';
-    input.min = spec.min;
-    input.max = spec.max;
-    input.step = spec.step;
-    input.value = DEFAULT_PARAMS[spec.key];
-    input.dataset.key = spec.key;
-    input.addEventListener(
+
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = spec.min;
+    slider.max = spec.max;
+    slider.step = spec.step;
+    slider.value = DEFAULT_PARAMS[spec.key];
+    slider.dataset.key = spec.key;
+
+    const number = document.createElement('input');
+    number.type = 'number';
+    number.min = spec.min;
+    number.max = spec.max;
+    number.step = spec.step;
+    number.value = DEFAULT_PARAMS[spec.key];
+    number.dataset.key = spec.key;
+
+    const onChange = (val, key) => {
+      sim.updateParam(key, val);
+      slider.value = val;
+      number.value = val;
+      updateValueLabel(key, val);
+    };
+
+    slider.addEventListener(
       'wheel',
       (e) => {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -1 : 1;
-        const step = parseFloat(spec.step);
-        const next = parseFloat(input.value) + delta * step;
+        const baseStep = parseFloat(spec.step);
+        const step =
+          spec.key === 'growthWidth' && baseStep < 0.001 ? 0.001 : baseStep;
+        const next = parseFloat(slider.value) + delta * step;
         const clamped = Math.min(spec.max, Math.max(spec.min, next));
-        input.value = clamped;
-        input.dispatchEvent(new Event('input'));
+        onChange(clamped, spec.key);
       },
       { passive: false },
     );
-    input.addEventListener('input', (e) => {
+    slider.addEventListener('input', (e) => {
       const key = e.target.dataset.key;
       const value = parseFloat(e.target.value);
-      sim.updateParam(key, value);
-      updateValueLabel(key, value);
+      onChange(value, key);
     });
+
+    number.addEventListener('input', (e) => {
+      const key = e.target.dataset.key;
+      const value = parseFloat(e.target.value);
+      if (Number.isNaN(value)) return;
+      const clamped = Math.min(spec.max, Math.max(spec.min, value));
+      onChange(clamped, key);
+    });
+
+    row.appendChild(slider);
+    row.appendChild(number);
     wrapper.appendChild(label);
-    wrapper.appendChild(input);
+    wrapper.appendChild(row);
     paramsContainer.appendChild(wrapper);
-  });
+  };
+
+  // Group controls like wigle-u
+  const tension = PARAM_SPECS.slice(0, 4);
+  const economy = PARAM_SPECS.slice(4, 7);
+  const growth = PARAM_SPECS.slice(7, 10);
+  const globalMod = PARAM_SPECS.slice(10);
+
+  const addGroup = (title, specs) => {
+    const header = document.createElement('h3');
+    header.textContent = title;
+    header.style.margin = '12px 0 4px';
+    paramsContainer.appendChild(header);
+    specs.forEach(makeControl);
+  };
+
+  addGroup('Dynamic Tension', tension);
+  addGroup('Energy Economy', economy);
+  addGroup('Growth Function', growth);
+  addGroup('Global', globalMod);
 
   speedButtons.forEach((btn) => {
     btn.addEventListener('click', () => {

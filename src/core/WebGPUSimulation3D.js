@@ -733,20 +733,20 @@ fn vs(@builtin(vertex_index) idx : u32) -> VertexOut {
 fn energyGradient(energy : f32) -> vec3<f32> {
   var color: vec3<f32>;
   if (energy < 0.1) {
-    color = mix(vec3<f32>(0.0, 0.0, 0.0), vec3<f32>(0.0, 0.0, 0.2), energy * 10.0);
+    color = mix(vec3<f32>(0.01, 0.005, 0.05), vec3<f32>(0.05, 0.02, 0.15), energy * 10.0);
   } else if (energy < 0.3) {
-    color = mix(vec3<f32>(0.0, 0.0, 0.2), vec3<f32>(0.0, 0.3, 0.8), (energy - 0.1) * 5.0);
+    color = mix(vec3<f32>(0.05, 0.02, 0.15), vec3<f32>(0.12, 0.08, 0.35), (energy - 0.1) * 5.0);
   } else if (energy < 0.5) {
-    color = mix(vec3<f32>(0.0, 0.3, 0.8), vec3<f32>(0.0, 0.8, 1.0), (energy - 0.3) * 5.0);
+    color = mix(vec3<f32>(0.12, 0.08, 0.35), vec3<f32>(0.25, 0.12, 0.55), (energy - 0.3) * 5.0);
   } else if (energy < 0.7) {
-    color = mix(vec3<f32>(0.0, 0.8, 1.0), vec3<f32>(0.2, 1.0, 0.3), (energy - 0.5) * 5.0);
+    color = mix(vec3<f32>(0.25, 0.12, 0.55), vec3<f32>(0.45, 0.18, 0.75), (energy - 0.5) * 5.0);
   } else if (energy < 0.85) {
-    color = mix(vec3<f32>(0.2, 1.0, 0.3), vec3<f32>(1.0, 1.0, 0.0), (energy - 0.7) * 6.67);
+    color = mix(vec3<f32>(0.45, 0.18, 0.75), vec3<f32>(0.72, 0.35, 0.95), (energy - 0.7) * 6.67);
   } else {
-    color = mix(vec3<f32>(1.0, 1.0, 0.0), vec3<f32>(1.0, 1.0, 1.0), (energy - 0.85) * 6.67);
-    color = color + vec3<f32>(0.2) * sin(energy * 50.0);
+    color = mix(vec3<f32>(0.72, 0.35, 0.95), vec3<f32>(0.95, 0.9, 1.0), (energy - 0.85) * 6.67);
+    color = color + vec3<f32>(0.08, 0.04, 0.1) * sin(energy * 40.0);
   }
-  color = color + energy * 0.15;
+  color = color + energy * 0.08;
   return color;
 }
 
