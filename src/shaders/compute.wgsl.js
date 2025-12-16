@@ -84,15 +84,57 @@ fn growthFunction(potential : f32, currentEnergy : f32, center : f32, width : f3
   return bell;
 }
 
-// 3D Laplacian for diffusion (6-neighbor stencil)
-fn laplacian(coord : vec3<i32>, dims : vec3<i32>, current : f32) -> f32 {
+// 3D Laplacian for diffusion (6/18/26-neighbor stencil)
+// neighborMode: 6=face, 18=face+edge, 26=full cube
+fn laplacian(coord : vec3<i32>, dims : vec3<i32>, current : f32, neighborMode : f32) -> f32 {
+  // Face neighbors (6) - always used
   let xp = loadEnergy(coord + vec3<i32>(1, 0, 0), dims);
   let xm = loadEnergy(coord + vec3<i32>(-1, 0, 0), dims);
   let yp = loadEnergy(coord + vec3<i32>(0, 1, 0), dims);
   let ym = loadEnergy(coord + vec3<i32>(0, -1, 0), dims);
   let zp = loadEnergy(coord + vec3<i32>(0, 0, 1), dims);
   let zm = loadEnergy(coord + vec3<i32>(0, 0, -1), dims);
-  return (xp + xm + yp + ym + zp + zm) - 6.0 * current;
+
+  var sum = xp + xm + yp + ym + zp + zm;
+  var centerWeight = 6.0;
+
+  // Edge neighbors (12) - weight 1/sqrt(2) = 0.7071
+  if (neighborMode >= 18.0) {
+    let w = 0.7071;
+    sum += w * (
+      loadEnergy(coord + vec3<i32>(1, 1, 0), dims) +
+      loadEnergy(coord + vec3<i32>(1, -1, 0), dims) +
+      loadEnergy(coord + vec3<i32>(-1, 1, 0), dims) +
+      loadEnergy(coord + vec3<i32>(-1, -1, 0), dims) +
+      loadEnergy(coord + vec3<i32>(1, 0, 1), dims) +
+      loadEnergy(coord + vec3<i32>(1, 0, -1), dims) +
+      loadEnergy(coord + vec3<i32>(-1, 0, 1), dims) +
+      loadEnergy(coord + vec3<i32>(-1, 0, -1), dims) +
+      loadEnergy(coord + vec3<i32>(0, 1, 1), dims) +
+      loadEnergy(coord + vec3<i32>(0, 1, -1), dims) +
+      loadEnergy(coord + vec3<i32>(0, -1, 1), dims) +
+      loadEnergy(coord + vec3<i32>(0, -1, -1), dims)
+    );
+    centerWeight += 12.0 * w;
+  }
+
+  // Corner neighbors (8) - weight 1/sqrt(3) = 0.5774
+  if (neighborMode >= 26.0) {
+    let w = 0.5774;
+    sum += w * (
+      loadEnergy(coord + vec3<i32>(1, 1, 1), dims) +
+      loadEnergy(coord + vec3<i32>(1, 1, -1), dims) +
+      loadEnergy(coord + vec3<i32>(1, -1, 1), dims) +
+      loadEnergy(coord + vec3<i32>(1, -1, -1), dims) +
+      loadEnergy(coord + vec3<i32>(-1, 1, 1), dims) +
+      loadEnergy(coord + vec3<i32>(-1, 1, -1), dims) +
+      loadEnergy(coord + vec3<i32>(-1, -1, 1), dims) +
+      loadEnergy(coord + vec3<i32>(-1, -1, -1), dims)
+    );
+    centerWeight += 8.0 * w;
+  }
+
+  return sum - centerWeight * current;
 }
 
 // 3D hash function for deterministic noise
@@ -128,6 +170,7 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
   let fissionThreshold = params.economy.w;
   let instability = params.instab.x;
   let growthWidthNorm = params.instab.y;
+  let neighborMode = params.instab.z;
   let time = params.camera.z;
   let seed = params.misc.w;
 
@@ -191,7 +234,7 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
   let metabolism = currentEnergy * currentEnergy * decayRate;
 
   // 4. Diffusion (Laplacian smoothing)
-  let diffusion = laplacian(coord, dims, currentEnergy) * diffusionRate;
+  let diffusion = laplacian(coord, dims, currentEnergy, neighborMode) * diffusionRate;
 
   // 5. Fission instability (chaos at high energy)
   var fissionNoise = 0.0;

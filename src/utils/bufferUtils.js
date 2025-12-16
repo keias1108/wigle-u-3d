@@ -5,8 +5,7 @@
  * WGSL structs require 16-byte alignment for vec4 types.
  */
 
-import { KERNEL_SIZE } from '../config/constants.js';
-import { DIFFUSION_CFL_SCALE } from '../config/constants.js';
+import { KERNEL_SIZE, CFL_SCALES } from '../config/constants.js';
 
 /**
  * Helper class for building uniform buffers with proper alignment
@@ -177,15 +176,22 @@ export function packSimParams(params, gridSize, camera) {
   ]);
 
   // economy vec4<f32> (globalAverage, decayRate, diffusionRate, fissionThreshold)
+  // CFL scale depends on neighbor mode (6/18/26)
+  const cflScale = CFL_SCALES[params.neighborMode] || CFL_SCALES[6];
   builder.writeVec4f([
     params.globalAverage || 0.0,
     params.decayRate,
-    params.diffusionRate * DIFFUSION_CFL_SCALE,
+    params.diffusionRate * cflScale,
     params.fissionThreshold,
   ]);
 
-  // instab vec4<f32> (instabilityFactor, growthWidthNorm, inv, inv)
-  builder.writeVec4f([params.instabilityFactor, growthWidthNorm, inv, inv]);
+  // instab vec4<f32> (instabilityFactor, growthWidthNorm, neighborMode, raySteps)
+  builder.writeVec4f([
+    params.instabilityFactor,
+    growthWidthNorm,
+    params.neighborMode || 6,
+    params.raySteps || 96,
+  ]);
 
   // misc vec4<f32> (yaw, pitch, distance, seed)
   builder.writeVec4f([

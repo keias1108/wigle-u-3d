@@ -14,6 +14,8 @@ export const DEFAULT_PARAMS = {
   instabilityFactor: 1.5,
   growthWidthNorm: 0.5,
   paletteMode: 0, // 0=3D purple/blue, 1=2D, 2=Structure high-contrast
+  neighborMode: 6, // 6=face, 18=face+edge, 26=full cube
+  raySteps: 96, // 64=fast, 96=balanced, 128=quality
 };
 
 export const PARAM_SPECS = [

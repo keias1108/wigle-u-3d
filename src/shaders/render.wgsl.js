@@ -197,7 +197,7 @@ fn fs(in : VertexOut) -> @location(0) vec4<f32> {
   // Ray marching parameters
   let tStart = max(hit.x, 0.0);
   let tEnd = hit.y;
-  let steps: i32 = 64;
+  let steps = i32(params.instab.w); // raySteps from uniform (64/96/128)
   let dt = (tEnd - tStart) / f32(steps);
 
   // Ray march and find maximum energy

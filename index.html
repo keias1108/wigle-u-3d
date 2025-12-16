@@ -107,6 +107,26 @@
           </label>
         </div>
         <div class="row">
+          <label style="width: 100%">
+            Ray Steps
+            <select id="raySteps" style="width: 100%; margin-top: 4px">
+              <option value="64">64 (fast)</option>
+              <option value="96" selected>96 (balanced)</option>
+              <option value="128">128 (quality)</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label style="width: 100%">
+            Diffusion Neighbors
+            <select id="neighborMode" style="width: 100%; margin-top: 4px">
+              <option value="6" selected>6 (face)</option>
+              <option value="18">18 (face+edge)</option>
+              <option value="26">26 (full cube)</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
           <label>Yaw <span id="yawLabel" class="value"></span></label>
           <input id="yaw" type="range" min="-180" max="180" step="1" value="0" />
         </div>

@@ -14,6 +14,8 @@ const paramsContainer = document.getElementById('params');
 const gridSizeSelect = document.getElementById('gridSize');
 const seedBtn = document.getElementById('seedBtn');
 const paletteSelect = document.getElementById('palette');
+const rayStepsSelect = document.getElementById('raySteps');
+const neighborModeSelect = document.getElementById('neighborMode');
 const yawInput = document.getElementById('yaw');
 const yawLabel = document.getElementById('yawLabel');
 const pitchInput = document.getElementById('pitch');
@@ -160,6 +162,16 @@ function initControls() {
     updateValueLabel('paletteMode', mode);
   });
 
+  rayStepsSelect.addEventListener('change', (e) => {
+    const steps = Number(e.target.value);
+    sim.updateParam('raySteps', steps);
+  });
+
+  neighborModeSelect.addEventListener('change', (e) => {
+    const mode = Number(e.target.value);
+    sim.updateParam('neighborMode', mode);
+  });
+
   const updateYaw = (deg) => {
     yawLabel.textContent = `${deg}°`;
     sim.setRotation(deg, sim.pitch);
@@ -297,5 +309,11 @@ function updateUIFromParams(params) {
   Object.entries(params).forEach(([k, v]) => updateValueLabel(k, v));
   if (paletteSelect) {
     paletteSelect.value = params.paletteMode ?? 0;
+  }
+  if (rayStepsSelect) {
+    rayStepsSelect.value = params.raySteps ?? 96;
+  }
+  if (neighborModeSelect) {
+    neighborModeSelect.value = params.neighborMode ?? 6;
   }
 }

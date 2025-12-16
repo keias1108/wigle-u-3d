@@ -17,8 +17,16 @@ export const WORKGROUP_SIZE_X = 8;
 export const WORKGROUP_SIZE_Y = 8;
 export const WORKGROUP_SIZE_Z = 4;
 
-// CFL-style safety factor for 3D 6-neighbor diffusion (stability <= 1/6 per step)
-export const DIFFUSION_CFL_SCALE = 1.0 / 6.0;
+// CFL-style safety factor for 3D diffusion (stability depends on neighbor count)
+export const CFL_SCALES = {
+  6: 1.0 / 6.0,      // 6-neighbor (face only)
+  18: 1.0 / 14.5,    // 18-neighbor (face + edge): 6 + 12*0.7071
+  26: 1.0 / 19.0,    // 26-neighbor (full cube): 6 + 12*0.7071 + 8*0.5774
+};
+
+// Ray marching and neighbor mode defaults
+export const DEFAULT_RAY_STEPS = 96;
+export const DEFAULT_NEIGHBOR_MODE = 6;
 
 export const SPEED_OPTIONS = [
   { label: '⏸ 0x', value: 0 },
