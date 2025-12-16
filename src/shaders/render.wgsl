@@ -103,6 +103,27 @@ fn energyGradient2D(energy : f32) -> vec3<f32> {
   return color;
 }
 
+// Energy to color gradient (Structure high-contrast: deep navy → low-sat teal → amber → warm white)
+fn energyGradientStructure(energy : f32) -> vec3<f32> {
+  var color: vec3<f32>;
+  if (energy < 0.02) {
+    color = vec3<f32>(0.0, 0.0, 0.0);
+  } else if (energy < 0.20) {
+    color = mix(vec3<f32>(0.03, 0.05, 0.08), vec3<f32>(0.05, 0.08, 0.12), (energy - 0.02) * (1.0 / 0.18));
+  } else if (energy < 0.40) {
+    color = mix(vec3<f32>(0.10, 0.18, 0.22), vec3<f32>(0.16, 0.32, 0.35), (energy - 0.20) * 5.0);
+  } else if (energy < 0.65) {
+    color = mix(vec3<f32>(0.16, 0.32, 0.35), vec3<f32>(0.18, 0.36, 0.38), (energy - 0.40) * 4.0);
+  } else if (energy < 0.85) {
+    color = mix(vec3<f32>(0.65, 0.45, 0.18), vec3<f32>(0.88, 0.72, 0.35), (energy - 0.65) * 5.0);
+  } else {
+    color = mix(vec3<f32>(0.88, 0.72, 0.35), vec3<f32>(0.95, 0.93, 0.88), (energy - 0.85) * 6.67);
+    // Very light sparkle to pick out peaks
+    color = color + vec3<f32>(0.06, 0.05, 0.04) * sin(energy * 45.0);
+  }
+  return color;
+}
+
 // Rotate direction vector by yaw (around Y) and pitch (around X)
 fn rotateDir(dir : vec3<f32>, yaw : f32, pitch : f32) -> vec3<f32> {
   let cy = cos(yaw);
@@ -184,6 +205,12 @@ fn fs(in : VertexOut) -> @location(0) vec4<f32> {
   }
 
   // Map energy to color
-  let color = select(energyGradient3D(maxE), energyGradient2D(maxE), paletteMode > 0.5);
+  // Sharpness remap + black cut to reduce blur and lift high-energy structures
+  let eSharp = select(0.0, pow(maxE, 1.8), maxE >= 0.02);
+  let color = select(
+    energyGradient3D(eSharp),
+    select(energyGradient2D(eSharp), energyGradientStructure(eSharp), paletteMode > 1.5),
+    paletteMode > 0.5
+  );
   return vec4<f32>(color, 1.0);
 }

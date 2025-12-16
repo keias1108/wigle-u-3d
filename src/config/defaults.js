@@ -13,7 +13,7 @@ export const DEFAULT_PARAMS = {
   suppressionFactor: 1.0,
   instabilityFactor: 1.5,
   growthWidthNorm: 0.5,
-  paletteMode: 0, // 0=3D purple/blue, 1=2D banana-wave style
+  paletteMode: 0, // 0=3D purple/blue, 1=2D, 2=Structure high-contrast
 };
 
 export const PARAM_SPECS = [
