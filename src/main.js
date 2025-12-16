@@ -23,9 +23,34 @@ const pitchLabel = document.getElementById('pitchLabel');
 const saveBtn = document.getElementById('saveBtn');
 const loadInput = document.getElementById('loadInput');
 const fpsLabel = document.getElementById('fps');
+const speedDisplay = document.getElementById('speedDisplay');
 
-const speedButtons = Array.from(document.querySelectorAll('.speed-buttons button'));
 let lastNonZeroSpeed = 1;
+
+// localStorage: Collapsible 그룹 상태 관리
+const STORAGE_KEY = 'wigle-u-3d-collapsed-groups';
+
+function loadCollapsedState(groupName) {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return false;
+    const state = JSON.parse(saved);
+    return state[groupName] || false;
+  } catch {
+    return false;
+  }
+}
+
+function saveCollapsedState(groupName, isCollapsed) {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY) || '{}';
+    const state = JSON.parse(saved);
+    state[groupName] = isCollapsed;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('Failed to save collapsed state:', e);
+  }
+}
 
 const sim = new WebGPUSimulation3D({
   canvas,
@@ -115,7 +140,7 @@ function initControls() {
     row.appendChild(number);
     wrapper.appendChild(label);
     wrapper.appendChild(row);
-    paramsContainer.appendChild(wrapper);
+    return wrapper;
   };
 
   // Group controls like wigle-u
@@ -125,11 +150,44 @@ function initControls() {
   const globalMod = PARAM_SPECS.slice(10);
 
   const addGroup = (title, specs) => {
+    // 그룹 컨테이너
+    const group = document.createElement('div');
+    group.className = 'param-group';
+
+    // 헤더 (클릭 가능)
     const header = document.createElement('h3');
-    header.textContent = title;
-    header.style.margin = '12px 0 4px';
-    paramsContainer.appendChild(header);
-    specs.forEach(makeControl);
+    header.className = 'group-header';
+    header.innerHTML = `<span class="toggle">▼</span>${title}`;
+
+    // 콘텐츠 컨테이너
+    const content = document.createElement('div');
+    content.className = 'group-content';
+
+    // localStorage에서 상태 복원
+    const collapsed = loadCollapsedState(title);
+    if (collapsed) {
+      content.style.display = 'none';
+      header.querySelector('.toggle').textContent = '▶';
+    }
+
+    // 클릭 이벤트: 접었다 펼치기
+    header.addEventListener('click', () => {
+      const isCollapsed = content.style.display === 'none';
+      content.style.display = isCollapsed ? 'block' : 'none';
+      header.querySelector('.toggle').textContent = isCollapsed ? '▼' : '▶';
+      saveCollapsedState(title, !isCollapsed);
+    });
+
+    // 그룹 조립
+    group.appendChild(header);
+    group.appendChild(content);
+    paramsContainer.appendChild(group);
+
+    // 파라미터들을 content에 추가
+    specs.forEach((spec) => {
+      const control = makeControl(spec);
+      content.appendChild(control);
+    });
   };
 
   addGroup('Dynamic Tension', tension);
@@ -137,16 +195,42 @@ function initControls() {
   addGroup('Growth Function', growth);
   addGroup('Global', globalMod);
 
-  speedButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const speed = Number(btn.dataset.speed);
-      sim.setSpeed(speed);
-      if (speed > 0) lastNonZeroSpeed = speed;
-      speedButtons.forEach((b) => (b.style.background = '#1b2636'));
-      btn.style.background = '#274064';
+  // Settings, Data 그룹 collapsible 설정
+  const allSections = document.querySelectorAll('.section');
+  // allSections[0] = #params, [1] = Settings, [2] = Data
+  const settingsSection = allSections[1];
+  const dataSection = allSections[2];
+
+  const settingsHeader = settingsSection.querySelector('.group-header');
+  const settingsContent = settingsSection.querySelector('.group-content');
+  const dataHeader = dataSection.querySelector('.group-header');
+  const dataContent = dataSection.querySelector('.group-content');
+
+  const setupCollapsible = (header, content, groupName) => {
+    const collapsed = loadCollapsedState(groupName);
+    if (collapsed) {
+      content.style.display = 'none';
+      header.querySelector('.toggle').textContent = '▶';
+    } else {
+      content.style.display = 'block';
+      header.querySelector('.toggle').textContent = '▼';
+    }
+
+    header.addEventListener('click', () => {
+      const isCollapsed = content.style.display === 'none';
+      content.style.display = isCollapsed ? 'block' : 'none';
+      header.querySelector('.toggle').textContent = isCollapsed ? '▼' : '▶';
+      saveCollapsedState(groupName, !isCollapsed);
     });
-  });
-  speedButtons[1].style.background = '#274064';
+  };
+
+  setupCollapsible(settingsHeader, settingsContent, 'Settings');
+  setupCollapsible(dataHeader, dataContent, 'Data');
+
+  // Speed display update helper
+  const updateSpeedDisplay = (speed) => {
+    speedDisplay.textContent = speed === 0 ? '⏸' : `${speed}x`;
+  };
 
   gridSizeSelect.addEventListener('change', async (e) => {
     await sim.resizeGrid(Number(e.target.value));
@@ -233,7 +317,7 @@ function initControls() {
       } else {
         sim.setSpeed(lastNonZeroSpeed || 1);
       }
-      highlightSpeed(sim.speed);
+      updateSpeedDisplay(sim.speed);
     }
     if (!['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
       const speedMap = { Digit0: 0, Digit1: 1, Digit2: 2, Digit5: 5 };
@@ -241,7 +325,7 @@ function initControls() {
         const s = speedMap[e.code];
         sim.setSpeed(s);
         if (s > 0) lastNonZeroSpeed = s;
-        highlightSpeed(s);
+        updateSpeedDisplay(s);
       }
     }
   });
@@ -249,12 +333,6 @@ function initControls() {
     const k = keyMap[e.code];
     if (k) sim.setKeyState(k, false);
   });
-
-  const highlightSpeed = (speed) => {
-    speedButtons.forEach((b) => (b.style.background = '#1b2636'));
-    const btn = speedButtons.find((b) => Number(b.dataset.speed) === speed);
-    if (btn) btn.style.background = '#274064';
-  };
 
   saveBtn.addEventListener('click', () => {
     const data = { params: sim.params, gridSize: sim.gridSize };

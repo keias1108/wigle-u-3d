@@ -5,151 +5,392 @@
     <title>wigle-u-3d (WebGPU)</title>
     <style>
       :root {
-        font-family: 'Segoe UI', sans-serif;
+        font-family: 'Segoe UI', system-ui, sans-serif;
         color: #e8eef2;
-        background: radial-gradient(circle at 20% 20%, #1b1533, #0a0718 60%);
+        /* 우주 배경: 별 + 그라데이션 */
+        background: #0a0118;
+        background-image:
+          radial-gradient(2px 2px at 20% 30%, white, transparent),
+          radial-gradient(2px 2px at 60% 70%, white, transparent),
+          radial-gradient(1px 1px at 50% 50%, white, transparent),
+          radial-gradient(1px 1px at 80% 10%, white, transparent),
+          radial-gradient(2px 2px at 90% 60%, white, transparent),
+          radial-gradient(1px 1px at 15% 80%, rgba(255, 255, 255, 0.8), transparent),
+          radial-gradient(1px 1px at 40% 20%, rgba(255, 255, 255, 0.6), transparent),
+          radial-gradient(circle at 50% 50%, #1a0b2e 0%, #0a0118 100%);
+        background-attachment: fixed;
+
+        /* 글라스모피즘 컬러 팔레트 */
+        --glass-bg: rgba(18, 26, 37, 0.4);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --accent-blue: #8ab4f8;
+        --accent-purple: #b794f6;
+        --glow-blue: rgba(138, 180, 248, 0.5);
       }
+
       body {
         margin: 0;
         display: grid;
         grid-template-columns: 320px 1fr;
-        min-height: 100vh;
+        height: 100vh;
+        overflow: hidden;
       }
+
       #controls {
         padding: 16px;
-        background: #0f1621;
-        border-right: 1px solid #1e2a3b;
+        background: rgba(15, 22, 33, 0.6);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-right: 1px solid var(--glass-border);
         box-sizing: border-box;
+        height: 100vh;
         overflow-y: auto;
+        overflow-x: hidden;
       }
+
       #controls h1 {
-        margin: 0 0 12px;
-        font-size: 20px;
+        margin: 0 0 16px;
+        font-size: 22px;
+        font-weight: 600;
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-shadow: 0 0 30px rgba(138, 180, 248, 0.3);
       }
+
       .section {
         margin-bottom: 16px;
         padding: 12px;
-        background: #121a25;
-        border: 1px solid #1e2a3b;
-        border-radius: 8px;
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        box-shadow:
+          0 8px 32px rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        transition: all 0.2s ease;
       }
+
+      .section:hover {
+        box-shadow:
+          0 8px 32px rgba(0, 0, 0, 0.4),
+          0 0 20px rgba(138, 180, 248, 0.1),
+          inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+
       label {
         display: flex;
         justify-content: space-between;
         font-size: 12px;
         margin-bottom: 6px;
+        color: rgba(232, 238, 242, 0.9);
       }
+
       input[type='range'] {
         width: 100%;
       }
+
       .row {
         display: flex;
         gap: 8px;
         margin-bottom: 8px;
       }
+
       button,
       select,
       input[type='file'] {
         width: 100%;
         padding: 8px;
-        border: 1px solid #1e2a3b;
-        border-radius: 6px;
-        background: #1b2636;
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        background: rgba(27, 38, 54, 0.6);
+        backdrop-filter: blur(5px);
         color: #e8eef2;
-      }
-      button:hover {
-        background: #243248;
+        transition: all 0.2s ease;
         cursor: pointer;
       }
+
+      button:hover,
+      select:hover {
+        background: rgba(36, 50, 72, 0.8);
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 15px var(--glow-blue);
+      }
+
+      select:focus,
+      input[type='range']:focus {
+        outline: none;
+        box-shadow: 0 0 20px var(--glow-blue);
+        border-color: rgba(138, 180, 248, 0.8);
+      }
+
       #canvasContainer {
         position: relative;
         background: #0b0f16;
       }
+
       canvas {
         display: block;
         width: 100%;
         height: 100vh;
       }
+
+      /* 캔버스 오버레이 */
+      .canvas-overlay {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        padding: 12px 16px;
+        background: rgba(15, 22, 33, 0.85);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        font-size: 14px;
+        font-weight: 500;
+        display: flex;
+        gap: 20px;
+        pointer-events: none;
+      }
+
+      .overlay-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .overlay-label {
+        color: rgba(232, 238, 242, 0.7);
+        font-size: 12px;
+      }
+
+      .overlay-value {
+        color: var(--accent-blue);
+        font-variant-numeric: tabular-nums;
+        font-size: 16px;
+      }
+
+      /* 단축키 힌트 */
+      .shortcuts-hint {
+        position: absolute;
+        bottom: 16px;
+        left: 16px;
+        padding: 10px 14px;
+        background: rgba(15, 22, 33, 0.75);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        font-size: 11px;
+        color: rgba(232, 238, 242, 0.6);
+        line-height: 1.6;
+        pointer-events: none;
+      }
+
+      .shortcuts-hint kbd {
+        display: inline-block;
+        padding: 2px 6px;
+        background: rgba(138, 180, 248, 0.15);
+        border: 1px solid rgba(138, 180, 248, 0.3);
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 10px;
+        color: var(--accent-blue);
+      }
+
       .speed-buttons button {
         flex: 1;
       }
+
       .param {
         margin-bottom: 10px;
       }
+
       .value {
         font-variant-numeric: tabular-nums;
-        color: #9cd7ff;
+        color: var(--accent-blue);
+        font-weight: 500;
+      }
+
+      /* Collapsible 그룹 스타일 */
+      .param-group {
+        margin-bottom: 8px;
+      }
+
+      .group-header {
+        margin: 0 0 8px 0;
+        padding: 10px 12px;
+        background: rgba(30, 42, 59, 0.5);
+        backdrop-filter: blur(5px);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent-blue);
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+      }
+
+      .group-header:hover {
+        background: rgba(30, 42, 59, 0.8);
+        box-shadow: 0 0 15px rgba(138, 180, 248, 0.3);
+        border-color: rgba(138, 180, 248, 0.3);
+      }
+
+      .group-header .toggle {
+        display: inline-block;
+        width: 16px;
+        font-size: 11px;
+        transition: transform 0.2s ease;
+        margin-right: 4px;
+      }
+
+      .group-content {
+        padding: 4px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+
+      /* 커스텀 스크롤바 */
+      #controls::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      #controls::-webkit-scrollbar-track {
+        background: rgba(10, 15, 22, 0.5);
+      }
+
+      #controls::-webkit-scrollbar-thumb {
+        background: rgba(138, 180, 248, 0.3);
+        border-radius: 4px;
+      }
+
+      #controls::-webkit-scrollbar-thumb:hover {
+        background: rgba(138, 180, 248, 0.5);
+      }
+
+      /* 입력 요소 글로우 */
+      input[type='number'] {
+        width: 80px;
+        padding: 6px 8px;
+        border: 1px solid var(--glass-border);
+        border-radius: 6px;
+        background: rgba(27, 38, 54, 0.6);
+        color: #e8eef2;
+        transition: all 0.2s ease;
+      }
+
+      input[type='number']:focus {
+        outline: none;
+        box-shadow: 0 0 15px var(--glow-blue);
+        border-color: var(--accent-blue);
+      }
+
+      /* 별 반짝임 애니메이션 (선택사항) */
+      @keyframes twinkle {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
       }
     </style>
   </head>
   <body>
     <div id="controls">
       <h1>wigle-u-3d</h1>
-      <div class="section">
-        <div class="row">
-          <select id="gridSize"></select>
-          <button id="seedBtn">Reseed</button>
-        </div>
-        <div class="row speed-buttons">
-          <button data-speed="0">⏸</button>
-          <button data-speed="1">1x</button>
-          <button data-speed="2">2x</button>
-          <button data-speed="5">5x</button>
-        </div>
-        <div class="row">
-          <label style="width: 100%">
-            Color Palette
-            <select id="palette" style="width: 100%; margin-top: 4px">
-              <option value="0">3D (purple/blue)</option>
-              <option value="1">2D (blue→green→yellow→white)</option>
-              <option value="2">Structure (high contrast)</option>
-            </select>
-          </label>
-        </div>
-        <div class="row">
-          <label style="width: 100%">
-            Ray Steps
-            <select id="raySteps" style="width: 100%; margin-top: 4px">
-              <option value="64">64 (fast)</option>
-              <option value="96" selected>96 (balanced)</option>
-              <option value="128">128 (quality)</option>
-            </select>
-          </label>
-        </div>
-        <div class="row">
-          <label style="width: 100%">
-            Diffusion Neighbors
-            <select id="neighborMode" style="width: 100%; margin-top: 4px">
-              <option value="6" selected>6 (face)</option>
-              <option value="18">18 (face+edge)</option>
-              <option value="26">26 (full cube)</option>
-            </select>
-          </label>
-        </div>
-        <div class="row">
-          <label>Yaw <span id="yawLabel" class="value"></span></label>
-          <input id="yaw" type="range" min="-180" max="180" step="1" value="0" />
-        </div>
-        <div class="row">
-          <label>Pitch <span id="pitchLabel" class="value"></span></label>
-          <input id="pitch" type="range" min="-89" max="89" step="1" value="0" />
-        </div>
-      </div>
 
       <div class="section" id="params"></div>
 
       <div class="section">
-        <div class="row">
-          <button id="saveBtn">Save JSON</button>
-          <input id="loadInput" type="file" accept="application/json" />
+        <div class="param-group">
+          <h3 class="group-header">
+            <span class="toggle">▶</span>Settings
+          </h3>
+          <div class="group-content" style="display: none">
+            <div class="param">
+              <label style="width: 100%">
+                Grid Size
+                <div class="row" style="margin-top: 4px">
+                  <select id="gridSize"></select>
+                  <button id="seedBtn">Reseed</button>
+                </div>
+              </label>
+            </div>
+            <div class="param">
+              <label style="width: 100%">
+                Color Palette
+                <select id="palette" style="width: 100%; margin-top: 4px">
+                  <option value="0">3D (purple/blue)</option>
+                  <option value="1">2D (blue→green→yellow→white)</option>
+                  <option value="2">Structure (high contrast)</option>
+                </select>
+              </label>
+            </div>
+            <div class="param">
+              <label style="width: 100%">
+                Ray Steps
+                <select id="raySteps" style="width: 100%; margin-top: 4px">
+                  <option value="64">64 (fast)</option>
+                  <option value="96" selected>96 (balanced)</option>
+                  <option value="128">128 (quality)</option>
+                </select>
+              </label>
+            </div>
+            <div class="param">
+              <label style="width: 100%">
+                Diffusion Neighbors
+                <select id="neighborMode" style="width: 100%; margin-top: 4px">
+                  <option value="6" selected>6 (face)</option>
+                  <option value="18">18 (face+edge)</option>
+                  <option value="26">26 (full cube)</option>
+                </select>
+              </label>
+            </div>
+            <div class="param">
+              <label>Yaw <span id="yawLabel" class="value"></span></label>
+              <input id="yaw" type="range" min="-180" max="180" step="1" value="0" />
+            </div>
+            <div class="param">
+              <label>Pitch <span id="pitchLabel" class="value"></span></label>
+              <input id="pitch" type="range" min="-89" max="89" step="1" value="0" />
+            </div>
+          </div>
         </div>
       </div>
+
       <div class="section">
-        <div>FPS: <span id="fps" class="value">0</span></div>
+        <div class="param-group">
+          <h3 class="group-header">
+            <span class="toggle">▶</span>Data
+          </h3>
+          <div class="group-content" style="display: none">
+            <div class="row">
+              <button id="saveBtn">Save JSON</button>
+              <input id="loadInput" type="file" accept="application/json" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div id="canvasContainer">
       <canvas id="canvas"></canvas>
+      <div class="canvas-overlay">
+        <div class="overlay-item">
+          <span class="overlay-label">FPS</span>
+          <span class="overlay-value" id="fps">0</span>
+        </div>
+        <div class="overlay-item">
+          <span class="overlay-label">Speed</span>
+          <span class="overlay-value" id="speedDisplay">1x</span>
+        </div>
+      </div>
+      <div class="shortcuts-hint">
+        <kbd>Space</kbd> Pause/Resume &nbsp;
+        <kbd>0</kbd><kbd>1</kbd><kbd>2</kbd><kbd>5</kbd> Speed &nbsp;
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Pan
+      </div>
     </div>
     <script type="module" src="./src/main.js"></script>
   </body>
