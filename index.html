@@ -326,6 +326,13 @@
         outline: 2px solid var(--accent-blue);
         outline-offset: 2px;
       }
+
+      /* Version toggle button hover effect */
+      .param button:hover {
+        background: linear-gradient(135deg, rgba(0, 255, 204, 0.3), rgba(0, 150, 255, 0.3)) !important;
+        box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+        transform: translateY(-1px);
+      }
     </style>
   </head>
   <body>
@@ -385,6 +392,13 @@
                   <span style="margin-left: 8px; font-size: 11px;">High (0.75-1.0)</span>
                 </label>
               </div>
+            </div>
+            <div class="param">
+              <button
+                onclick="window.location.href='wigle-u-2d/index.html'"
+                style="width: 100%; padding: 10px; background: linear-gradient(135deg, rgba(0, 255, 204, 0.2), rgba(0, 150, 255, 0.2)); border: 1px solid rgba(0, 255, 204, 0.5); border-radius: 6px; color: #00ffcc; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">
+                ⇄ Switch to 2D Version
+              </button>
             </div>
             <div class="param">
               <label style="width: 100%">
