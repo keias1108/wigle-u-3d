@@ -195,8 +195,13 @@ export function packSimParams(params, gridSize, camera) {
     Math.random(), // seed
   ]);
 
-  // camera vec4<f32> (offsetX, offsetY, time, unused)
-  builder.writeVec4f([camera.offsetX, camera.offsetY, performance.now() * 0.001, 0.0]);
+  // camera vec4<f32> (offsetX, offsetY, time, paletteMode)
+  builder.writeVec4f([
+    camera.offsetX,
+    camera.offsetY,
+    performance.now() * 0.001,
+    params.paletteMode || 0,
+  ]);
 
   return builder.getBuffer();
 }

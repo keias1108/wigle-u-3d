@@ -64,7 +64,7 @@ fn vs(@builtin(vertex_index) idx : u32) -> VertexOut {
 // 0.5-0.7: Bright purple
 // 0.7-0.85: Very bright purple
 // 0.85-1.0: Near white with sparkle effect
-fn energyGradient(energy : f32) -> vec3<f32> {
+fn energyGradient3D(energy : f32) -> vec3<f32> {
   var color: vec3<f32>;
   if (energy < 0.1) {
     color = mix(vec3<f32>(0.01, 0.005, 0.05), vec3<f32>(0.05, 0.02, 0.15), energy * 10.0);
@@ -83,6 +83,29 @@ fn energyGradient(energy : f32) -> vec3<f32> {
   }
   // Subtle brightening
   color = color + energy * 0.08;
+  return color;
+}
+
+// Energy to color gradient (2D display.frag equivalent: blue→cyan→green→yellow→white)
+fn energyGradient2D(energy : f32) -> vec3<f32> {
+  var color: vec3<f32>;
+  if (energy < 0.1) {
+    color = mix(vec3<f32>(0.0, 0.0, 0.0), vec3<f32>(0.0, 0.0, 0.2), energy * 10.0);
+  } else if (energy < 0.3) {
+    color = mix(vec3<f32>(0.0, 0.0, 0.2), vec3<f32>(0.0, 0.3, 0.8), (energy - 0.1) * 5.0);
+  } else if (energy < 0.5) {
+    color = mix(vec3<f32>(0.0, 0.3, 0.8), vec3<f32>(0.0, 0.8, 1.0), (energy - 0.3) * 5.0);
+  } else if (energy < 0.7) {
+    color = mix(vec3<f32>(0.0, 0.8, 1.0), vec3<f32>(0.2, 1.0, 0.3), (energy - 0.5) * 5.0);
+  } else if (energy < 0.85) {
+    color = mix(vec3<f32>(0.2, 1.0, 0.3), vec3<f32>(1.0, 1.0, 0.0), (energy - 0.7) * 6.67);
+  } else {
+    color = mix(vec3<f32>(1.0, 1.0, 0.0), vec3<f32>(1.0, 1.0, 1.0), (energy - 0.85) * 6.67);
+    // Sparkle effect at very high energy
+    color = color + vec3<f32>(0.2, 0.2, 0.2) * sin(energy * 50.0);
+  }
+  // Subtle brightening
+  color = color + energy * 0.15;
   return color;
 }
 
@@ -131,6 +154,7 @@ fn fs(in : VertexOut) -> @location(0) vec4<f32> {
   let pitch = params.misc.y;
   let distance = params.misc.z;
   let offset = vec2<f32>(params.camera.x, params.camera.y);
+  let paletteMode = params.camera.w;
 
   // Camera setup
   let center = vec3<f32>(0.5 + offset.x, 0.5 + offset.y, 0.5);
@@ -166,7 +190,7 @@ fn fs(in : VertexOut) -> @location(0) vec4<f32> {
   }
 
   // Map energy to color
-  let color = energyGradient(maxE);
+  let color = select(energyGradient3D(maxE), energyGradient2D(maxE), paletteMode > 0.5);
   return vec4<f32>(color, 1.0);
 }
 `;

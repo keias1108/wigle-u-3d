@@ -13,6 +13,7 @@ const canvas = document.getElementById('canvas');
 const paramsContainer = document.getElementById('params');
 const gridSizeSelect = document.getElementById('gridSize');
 const seedBtn = document.getElementById('seedBtn');
+const paletteSelect = document.getElementById('palette');
 const yawInput = document.getElementById('yaw');
 const yawLabel = document.getElementById('yawLabel');
 const pitchInput = document.getElementById('pitch');
@@ -153,6 +154,12 @@ function initControls() {
     sim.reseed();
   });
 
+  paletteSelect.addEventListener('change', (e) => {
+    const mode = Number(e.target.value);
+    sim.updateParam('paletteMode', mode);
+    updateValueLabel('paletteMode', mode);
+  });
+
   const updateYaw = (deg) => {
     yawLabel.textContent = `${deg}°`;
     sim.setRotation(deg, sim.pitch);
@@ -268,6 +275,11 @@ function initControls() {
       gridSizeSelect.value = parsed.gridSize;
       await sim.resizeGrid(parsed.gridSize);
     }
+    if (typeof parsed.paletteMode === 'number') {
+      sim.updateParam('paletteMode', parsed.paletteMode);
+      paletteSelect.value = parsed.paletteMode;
+      updateValueLabel('paletteMode', parsed.paletteMode);
+    }
     updateUIFromParams(sim.params);
   });
 
@@ -283,4 +295,7 @@ function updateValueLabel(key, value) {
 
 function updateUIFromParams(params) {
   Object.entries(params).forEach(([k, v]) => updateValueLabel(k, v));
+  if (paletteSelect) {
+    paletteSelect.value = params.paletteMode ?? 0;
+  }
 }

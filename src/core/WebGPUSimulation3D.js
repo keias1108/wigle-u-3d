@@ -126,6 +126,11 @@ export class WebGPUSimulation3D {
   updateParam(key, value) {
     if (key in this.params) {
       this.params[key] = value;
+      if (key === 'paletteMode') {
+        // paletteMode lives in the camera vec4 slot; update immediately
+        this.#writeParamsBuffer();
+        return;
+      }
       this.#writeParamsBuffer();
     }
   }
