@@ -1,17 +1,18 @@
 // Default parameters mirror the 2D version (R channel only for now).
 export const DEFAULT_PARAMS = {
-  innerRadius: 3.5,
-  innerStrength: 0.9,
+  innerRadius: 3.3,
+  innerStrength: 0.88,
   outerRadius: 7.5,
   outerStrength: -0.4,
-  growthCenter: -0.17,
-  growthWidth: 0.0183,
+  growthCenter: -0.0606,
+  growthWidth: 0.1,
   growthRate: 0.607,
-  decayRate: 0.378,
-  diffusionRate: 0.333,
-  fissionThreshold: 0.796,
+  decayRate: 0.37,
+  diffusionRate: 0.589,
+  fissionThreshold: 0.888,
   suppressionFactor: 1.0,
   instabilityFactor: 1.5,
+  growthWidthNorm: 0.5,
 };
 
 export const PARAM_SPECS = [
@@ -31,4 +32,5 @@ export const PARAM_SPECS = [
   // Global mod
   { key: 'suppressionFactor', min: 0.0, max: 2.0, step: 0.01, label: 'Suppression Factor' },
   { key: 'instabilityFactor', min: 0.0, max: 3.0, step: 0.01, label: 'Instability Factor' },
+  { key: 'growthWidthNorm', min: 0.0, max: 4.0, step: 0.01, label: '3D Width Norm' },
 ];

@@ -91,8 +91,7 @@ function initControls() {
         const step =
           spec.key === 'growthWidth' && baseStep < 0.001 ? 0.001 : baseStep;
         const next = parseFloat(slider.value) + delta * step;
-        const clamped = Math.min(spec.max, Math.max(spec.min, next));
-        onChange(clamped, spec.key);
+        onChange(next, spec.key);
       },
       { passive: false },
     );
@@ -106,8 +105,7 @@ function initControls() {
       const key = e.target.dataset.key;
       const value = parseFloat(e.target.value);
       if (Number.isNaN(value)) return;
-      const clamped = Math.min(spec.max, Math.max(spec.min, value));
-      onChange(clamped, key);
+      onChange(value, key);
     });
 
     row.appendChild(slider);
@@ -257,9 +255,13 @@ function initControls() {
     const parsed = JSON.parse(text);
     if (parsed.params) {
       Object.entries(parsed.params).forEach(([k, v]) => {
-        sim.updateParam(k, v);
-        const input = paramsContainer.querySelector(`input[data-key="${k}"]`);
-        if (input) input.value = v;
+        const num = Number(v);
+        const value = Number.isNaN(num) ? v : num;
+        sim.updateParam(k, value);
+        paramsContainer.querySelectorAll(`input[data-key="${k}"]`).forEach((input) => {
+          input.value = value;
+        });
+        updateValueLabel(k, value);
       });
     }
     if (parsed.gridSize) {

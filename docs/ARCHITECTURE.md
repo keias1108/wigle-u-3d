@@ -185,7 +185,7 @@ struct SimParams {
   inner : vec4<f32>,    // kernel radii/strengths
   growthA : vec4<f32>,  // growth params
   economy : vec4<f32>,  // decay/diffusion/fission
-  instab : vec4<f32>,   // instability, inv×3
+  instab : vec4<f32>,   // instability, growthWidthNorm, inv×2
   misc : vec4<f32>,     // yaw, pitch, distance, seed
   camera : vec4<f32>,   // offsetX, offsetY, time, unused
 };

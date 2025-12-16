@@ -17,6 +17,9 @@ export const WORKGROUP_SIZE_X = 8;
 export const WORKGROUP_SIZE_Y = 8;
 export const WORKGROUP_SIZE_Z = 4;
 
+// CFL-style safety factor for 3D 6-neighbor diffusion (stability <= 1/6 per step)
+export const DIFFUSION_CFL_SCALE = 1.0 / 6.0;
+
 export const SPEED_OPTIONS = [
   { label: '⏸ 0x', value: 0 },
   { label: '▶ 1x', value: 1 },

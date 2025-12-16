@@ -116,6 +116,7 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
   let diffusionRate = params.economy.z;
   let fissionThreshold = params.economy.w;
   let instability = params.instab.x;
+  let growthWidthNorm = params.instab.y;
   let time = params.camera.z;
   let seed = params.misc.w;
 
@@ -147,7 +148,8 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
   }
 
   // 2. Growth function (Gaussian bell curve)
-  var growth = growthFunction(potential, currentEnergy, growthCenter, growthWidth, fissionThreshold, instability) - 0.5;
+  let widthEff = max(1e-6, growthWidth * growthWidthNorm);
+  var growth = growthFunction(potential, currentEnergy, growthCenter, widthEff, fissionThreshold, instability) - 0.5;
   growth = growth - globalAverage * suppressionFactor;
 
   // 3. Metabolism (quadratic energy decay)

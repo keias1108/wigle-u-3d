@@ -64,6 +64,12 @@ Controls energy lifecycle: growth, decay, diffusion, and instability.
   - **Wide (>0.1):** Tolerant, smooth evolution
 - **Tip:** Lower values create more distinct structures
 
+### **3D Width Norm** (`growthWidthNorm`)
+- **Range:** 0.0 - 4.0
+- **Default:** 1.5
+- **Effect:** 3D에서 커널 이웃 수 증가로 `potential` 분산이 줄어드는 현상을 보정해, `growthWidth`가 다시 “자르는” 역할을 하도록 스케일링
+- **Mechanics:** 내부적으로 `growthWidth_eff = growthWidth × (kernelScale^growthWidthNorm)` 형태로 적용 (0이면 비활성)
+
 ### **Growth Rate** (`growthRate`)
 - **Range:** 0.001 - 1.0
 - **Default:** 0.607
@@ -98,6 +104,7 @@ Controls energy lifecycle: growth, decay, diffusion, and instability.
   diffusion = Δenergy × diffusionRate
   ```
 - **Visual:** Higher = energy "bleeds" more, softer edges
+- **3D Note:** 내부에서 CFL 안전계수(1/6)가 곱어져 적용됨. 3D는 이웃 수가 많아 과결합되기 쉬우니 0.6 이상은 신중히 사용.
 
 ### **Fission Threshold** (`fissionThreshold`)
 - **Range:** 0.5 - 0.95
