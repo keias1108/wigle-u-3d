@@ -26,6 +26,7 @@ const fpsLabel = document.getElementById('fps');
 const speedDisplay = document.getElementById('speedDisplay');
 
 let lastNonZeroSpeed = 1;
+let captureDirHandle = null;
 
 // localStorage: Collapsible 그룹 상태 관리
 const STORAGE_KEY = 'wigle-u-3d-collapsed-groups';
@@ -308,6 +309,11 @@ function initControls() {
   // WASD pan
   const keyMap = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
   window.addEventListener('keydown', (e) => {
+    if (e.altKey && e.code === 'KeyC') {
+      e.preventDefault();
+      captureSnapshot();
+      return;
+    }
     const k = keyMap[e.code];
     if (k) sim.setKeyState(k, true);
     if (e.code === 'Space') {
@@ -393,5 +399,73 @@ function updateUIFromParams(params) {
   }
   if (neighborModeSelect) {
     neighborModeSelect.value = params.neighborMode ?? 6;
+  }
+}
+
+async function ensurePermission(handle) {
+  if (!handle) return false;
+  if (handle.requestPermission) {
+    const perm = await handle.requestPermission({ mode: 'readwrite' });
+    return perm === 'granted';
+  }
+  if (handle.queryPermission) {
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    return perm === 'granted';
+  }
+  return false;
+}
+
+async function ensureCaptureDir() {
+  if (!('showDirectoryPicker' in window)) {
+    alert('File System Access API is not supported in this browser.');
+    throw new Error('DirectoryPicker unsupported');
+  }
+  if (!captureDirHandle) {
+    captureDirHandle = await window.showDirectoryPicker({
+      id: 'wigle-u-3d-capture',
+      mode: 'readwrite',
+    });
+  }
+  const ok = await ensurePermission(captureDirHandle);
+  if (!ok) {
+    alert('Permission denied for the selected folder.');
+    captureDirHandle = null;
+    throw new Error('Permission denied');
+  }
+  return captureDirHandle;
+}
+
+async function writeFile(dirHandle, name, data) {
+  const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(data);
+  await writable.close();
+}
+
+function timestampFolder() {
+  const ts = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `capture_${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}`;
+}
+
+async function captureSnapshot() {
+  try {
+    const root = await ensureCaptureDir();
+    const folderName = timestampFolder();
+    const subDir = await root.getDirectoryHandle(folderName, { create: true });
+
+    const pngBlob = await new Promise((resolve) => {
+      canvas.toBlob((b) => resolve(b), 'image/png');
+    });
+    if (!pngBlob) throw new Error('Canvas capture failed');
+    await writeFile(subDir, 'snapshot.png', pngBlob);
+
+    const payload = { params: sim.params, gridSize: sim.gridSize, paletteMode: sim.params.paletteMode };
+    const json = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    await writeFile(subDir, 'params.json', json);
+
+    console.log(`Captured to ${folderName}/snapshot.png`);
+  } catch (err) {
+    console.error('Capture failed:', err);
   }
 }
