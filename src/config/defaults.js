@@ -14,6 +14,7 @@ export const DEFAULT_PARAMS = {
   instabilityFactor: 1.5,
   growthWidthNorm: 0.5,
   paletteMode: 0, // 0=3D purple/blue, 1=2D, 2=Structure high-contrast
+  energyRangeFilters: 0b1111, // 4 bits: low, mid-low, mid-high, high (all enabled by default)
   neighborMode: 6, // 6=face, 18=face+edge, 26=full cube
   raySteps: 96, // 64=fast, 96=balanced, 128=quality
 };

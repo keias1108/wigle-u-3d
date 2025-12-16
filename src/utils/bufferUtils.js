@@ -201,12 +201,16 @@ export function packSimParams(params, gridSize, camera) {
     Math.random(), // seed
   ]);
 
-  // camera vec4<f32> (offsetX, offsetY, time, paletteMode)
+  // camera vec4<f32> (offsetX, offsetY, time, packed)
+  // Pack both paletteMode (bits 0-1) and energyRangeFilters (bits 2-5)
+  const filterBits = (params.energyRangeFilters || 0b1111) & 0xF;
+  const packedValue = (params.paletteMode || 0) | (filterBits << 2);
+
   builder.writeVec4f([
     camera.offsetX,
     camera.offsetY,
     performance.now() * 0.001,
-    params.paletteMode || 0,
+    packedValue,
   ]);
 
   return builder.getBuffer();

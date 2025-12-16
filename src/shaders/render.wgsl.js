@@ -57,6 +57,27 @@ fn vs(@builtin(vertex_index) idx : u32) -> VertexOut {
   return out;
 }
 
+// Unpack palette mode and energy filters from packed value
+fn unpackFilters(packed : f32) -> vec2<u32> {
+  let packedInt = u32(packed);
+  let paletteMode = packedInt & 0x3u;           // bits 0-1
+  let filterBits = (packedInt >> 2u) & 0xFu;    // bits 2-5
+  return vec2<u32>(paletteMode, filterBits);
+}
+
+// Check if energy value is in a visible range
+fn isEnergyVisible(energy : f32, filterBits : u32) -> bool {
+  if (energy < 0.25) {
+    return (filterBits & 0x1u) != 0u;  // bit 0: low
+  } else if (energy < 0.5) {
+    return (filterBits & 0x2u) != 0u;  // bit 1: mid-low
+  } else if (energy < 0.75) {
+    return (filterBits & 0x4u) != 0u;  // bit 2: mid-high
+  } else {
+    return (filterBits & 0x8u) != 0u;  // bit 3: high
+  }
+}
+
 // Energy to color gradient (purple/blue theme)
 // 0.0-0.1: Dark blue (almost black)
 // 0.1-0.3: Blue
@@ -175,7 +196,11 @@ fn fs(in : VertexOut) -> @location(0) vec4<f32> {
   let pitch = params.misc.y;
   let distance = params.misc.z;
   let offset = vec2<f32>(params.camera.x, params.camera.y);
-  let paletteMode = params.camera.w;
+
+  // Unpack paletteMode and filterBits from camera.w
+  let unpacked = unpackFilters(params.camera.w);
+  let paletteMode = f32(unpacked.x);
+  let filterBits = unpacked.y;
 
   // Camera setup
   let center = vec3<f32>(0.5 + offset.x, 0.5 + offset.y, 0.5);
@@ -208,6 +233,11 @@ fn fs(in : VertexOut) -> @location(0) vec4<f32> {
     let e = textureSampleLevel(fieldTex, samp, pos, 0.0).x;
     if (e > maxE) { maxE = e; }
     t = t + dt;
+  }
+
+  // Apply energy range filter
+  if (!isEnergyVisible(maxE, filterBits)) {
+    return vec4<f32>(0.0, 0.0, 0.0, 1.0);
   }
 
   // Map energy to color

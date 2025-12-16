@@ -313,6 +313,19 @@
           opacity: 0.3;
         }
       }
+
+      /* Energy filter checkboxes */
+      input[type="checkbox"].energy-filter {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: var(--accent-blue);
+      }
+
+      input[type="checkbox"].energy-filter:focus {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+      }
     </style>
   </head>
   <body>
@@ -349,6 +362,29 @@
                   <option value="2">Structure (high contrast)</option>
                 </select>
               </label>
+            </div>
+            <div class="param">
+              <label style="width: 100%; font-weight: 500; margin-bottom: 8px; display: block;">
+                Energy Range Filters
+              </label>
+              <div style="padding-left: 8px;">
+                <label style="display: flex; align-items: center; margin-bottom: 6px; cursor: pointer;">
+                  <input type="checkbox" id="filterLow" checked class="energy-filter">
+                  <span style="margin-left: 8px; font-size: 11px;">Low (0.0-0.25)</span>
+                </label>
+                <label style="display: flex; align-items: center; margin-bottom: 6px; cursor: pointer;">
+                  <input type="checkbox" id="filterMidLow" checked class="energy-filter">
+                  <span style="margin-left: 8px; font-size: 11px;">Mid-Low (0.25-0.5)</span>
+                </label>
+                <label style="display: flex; align-items: center; margin-bottom: 6px; cursor: pointer;">
+                  <input type="checkbox" id="filterMidHigh" checked class="energy-filter">
+                  <span style="margin-left: 8px; font-size: 11px;">Mid-High (0.5-0.75)</span>
+                </label>
+                <label style="display: flex; align-items: center; margin-bottom: 6px; cursor: pointer;">
+                  <input type="checkbox" id="filterHigh" checked class="energy-filter">
+                  <span style="margin-left: 8px; font-size: 11px;">High (0.75-1.0)</span>
+                </label>
+              </div>
             </div>
             <div class="param">
               <label style="width: 100%">

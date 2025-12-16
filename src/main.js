@@ -24,6 +24,10 @@ const saveBtn = document.getElementById('saveBtn');
 const loadInput = document.getElementById('loadInput');
 const fpsLabel = document.getElementById('fps');
 const speedDisplay = document.getElementById('speedDisplay');
+const filterLowCheckbox = document.getElementById('filterLow');
+const filterMidLowCheckbox = document.getElementById('filterMidLow');
+const filterMidHighCheckbox = document.getElementById('filterMidHigh');
+const filterHighCheckbox = document.getElementById('filterHigh');
 
 let lastNonZeroSpeed = 1;
 let captureDirHandle = null;
@@ -257,6 +261,46 @@ function initControls() {
     sim.updateParam('neighborMode', mode);
   });
 
+  // Energy range filter handlers
+  const FILTER_STORAGE_KEY = 'wigle-u-3d-energy-filters';
+
+  const updateFilters = () => {
+    let filterBits = 0;
+    if (filterLowCheckbox.checked) filterBits |= 0b0001;
+    if (filterMidLowCheckbox.checked) filterBits |= 0b0010;
+    if (filterMidHighCheckbox.checked) filterBits |= 0b0100;
+    if (filterHighCheckbox.checked) filterBits |= 0b1000;
+
+    sim.updateParam('energyRangeFilters', filterBits);
+
+    // Save to localStorage
+    try {
+      localStorage.setItem(FILTER_STORAGE_KEY, filterBits.toString());
+    } catch (e) {
+      console.warn('Failed to save filter state:', e);
+    }
+  };
+
+  filterLowCheckbox.addEventListener('change', updateFilters);
+  filterMidLowCheckbox.addEventListener('change', updateFilters);
+  filterMidHighCheckbox.addEventListener('change', updateFilters);
+  filterHighCheckbox.addEventListener('change', updateFilters);
+
+  // Load filter state from localStorage on startup
+  try {
+    const saved = localStorage.getItem(FILTER_STORAGE_KEY);
+    if (saved !== null) {
+      const filterBits = parseInt(saved, 10);
+      sim.updateParam('energyRangeFilters', filterBits);
+      filterLowCheckbox.checked = (filterBits & 0b0001) !== 0;
+      filterMidLowCheckbox.checked = (filterBits & 0b0010) !== 0;
+      filterMidHighCheckbox.checked = (filterBits & 0b0100) !== 0;
+      filterHighCheckbox.checked = (filterBits & 0b1000) !== 0;
+    }
+  } catch (e) {
+    console.warn('Failed to load filter state:', e);
+  }
+
   const updateYaw = (deg) => {
     yawLabel.textContent = `${deg}°`;
     sim.setRotation(deg, sim.pitch);
@@ -400,6 +444,13 @@ function updateUIFromParams(params) {
   if (neighborModeSelect) {
     neighborModeSelect.value = params.neighborMode ?? 6;
   }
+
+  // Update energy filter checkboxes
+  const filterBits = params.energyRangeFilters ?? 0b1111;
+  if (filterLowCheckbox) filterLowCheckbox.checked = (filterBits & 0b0001) !== 0;
+  if (filterMidLowCheckbox) filterMidLowCheckbox.checked = (filterBits & 0b0010) !== 0;
+  if (filterMidHighCheckbox) filterMidHighCheckbox.checked = (filterBits & 0b0100) !== 0;
+  if (filterHighCheckbox) filterHighCheckbox.checked = (filterBits & 0b1000) !== 0;
 }
 
 async function ensurePermission(handle) {
