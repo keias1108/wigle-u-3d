@@ -1,22 +1,33 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <title>wigle-u-3d (WebGPU)</title>
     <style>
       :root {
-        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-family: "Segoe UI", system-ui, sans-serif;
         color: #e8eef2;
         /* 우주 배경: 별 + 그라데이션 */
         background: #0a0118;
-        background-image:
-          radial-gradient(2px 2px at 20% 30%, white, transparent),
+        background-image: radial-gradient(
+            2px 2px at 20% 30%,
+            white,
+            transparent
+          ),
           radial-gradient(2px 2px at 60% 70%, white, transparent),
           radial-gradient(1px 1px at 50% 50%, white, transparent),
           radial-gradient(1px 1px at 80% 10%, white, transparent),
           radial-gradient(2px 2px at 90% 60%, white, transparent),
-          radial-gradient(1px 1px at 15% 80%, rgba(255, 255, 255, 0.8), transparent),
-          radial-gradient(1px 1px at 40% 20%, rgba(255, 255, 255, 0.6), transparent),
+          radial-gradient(
+            1px 1px at 15% 80%,
+            rgba(255, 255, 255, 0.8),
+            transparent
+          ),
+          radial-gradient(
+            1px 1px at 40% 20%,
+            rgba(255, 255, 255, 0.6),
+            transparent
+          ),
           radial-gradient(circle at 50% 50%, #1a0b2e 0%, #0a0118 100%);
         background-attachment: fixed;
 
@@ -52,7 +63,11 @@
         margin: 0 0 16px;
         font-size: 22px;
         font-weight: 600;
-        background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        background: linear-gradient(
+          135deg,
+          var(--accent-blue),
+          var(--accent-purple)
+        );
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -67,15 +82,13 @@
         -webkit-backdrop-filter: blur(10px);
         border: 1px solid var(--glass-border);
         border-radius: 12px;
-        box-shadow:
-          0 8px 32px rgba(0, 0, 0, 0.3),
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
           inset 0 1px 0 rgba(255, 255, 255, 0.1);
         transition: all 0.2s ease;
       }
 
       .section:hover {
-        box-shadow:
-          0 8px 32px rgba(0, 0, 0, 0.4),
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
           0 0 20px rgba(138, 180, 248, 0.1),
           inset 0 1px 0 rgba(255, 255, 255, 0.15);
       }
@@ -88,7 +101,7 @@
         color: rgba(232, 238, 242, 0.9);
       }
 
-      input[type='range'] {
+      input[type="range"] {
         width: 100%;
       }
 
@@ -100,7 +113,7 @@
 
       button,
       select,
-      input[type='file'] {
+      input[type="file"] {
         width: 100%;
         padding: 8px;
         border: 1px solid var(--glass-border);
@@ -120,7 +133,7 @@
       }
 
       select:focus,
-      input[type='range']:focus {
+      input[type="range"]:focus {
         outline: none;
         box-shadow: 0 0 20px var(--glow-blue);
         border-color: rgba(138, 180, 248, 0.8);
@@ -274,7 +287,7 @@
       }
 
       /* 입력 요소 글로우 */
-      input[type='number'] {
+      input[type="number"] {
         width: 80px;
         padding: 6px 8px;
         border: 1px solid var(--glass-border);
@@ -284,7 +297,7 @@
         transition: all 0.2s ease;
       }
 
-      input[type='number']:focus {
+      input[type="number"]:focus {
         outline: none;
         box-shadow: 0 0 15px var(--glow-blue);
         border-color: var(--accent-blue);
@@ -292,22 +305,31 @@
 
       /* 별 반짝임 애니메이션 (선택사항) */
       @keyframes twinkle {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.3; }
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
       }
     </style>
   </head>
   <body>
     <div id="controls">
-      <h1>wigle-u-3d</h1>
+      <h1 style="margin: 0 0 12px; display: flex; align-items: center">
+        <img
+          src="assets/logo.png"
+          alt="wigle-u-3d"
+          style="max-width: 96px; height: auto"
+        />
+      </h1>
 
       <div class="section" id="params"></div>
 
       <div class="section">
         <div class="param-group">
-          <h3 class="group-header">
-            <span class="toggle">▶</span>Settings
-          </h3>
+          <h3 class="group-header"><span class="toggle">▶</span>Settings</h3>
           <div class="group-content" style="display: none">
             <div class="param">
               <label style="width: 100%">
@@ -350,11 +372,25 @@
             </div>
             <div class="param">
               <label>Yaw <span id="yawLabel" class="value"></span></label>
-              <input id="yaw" type="range" min="-180" max="180" step="1" value="0" />
+              <input
+                id="yaw"
+                type="range"
+                min="-180"
+                max="180"
+                step="1"
+                value="0"
+              />
             </div>
             <div class="param">
               <label>Pitch <span id="pitchLabel" class="value"></span></label>
-              <input id="pitch" type="range" min="-89" max="89" step="1" value="0" />
+              <input
+                id="pitch"
+                type="range"
+                min="-89"
+                max="89"
+                step="1"
+                value="0"
+              />
             </div>
           </div>
         </div>
@@ -362,9 +398,7 @@
 
       <div class="section">
         <div class="param-group">
-          <h3 class="group-header">
-            <span class="toggle">▶</span>Data
-          </h3>
+          <h3 class="group-header"><span class="toggle">▶</span>Data</h3>
           <div class="group-content" style="display: none">
             <div class="row">
               <button id="saveBtn">Save JSON</button>
@@ -387,9 +421,9 @@
         </div>
       </div>
       <div class="shortcuts-hint">
-        <kbd>Space</kbd> Pause/Resume &nbsp;
-        <kbd>0</kbd><kbd>1</kbd><kbd>2</kbd><kbd>5</kbd> Speed &nbsp;
-        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Pan
+        <kbd>Space</kbd> Pause/Resume &nbsp; <kbd>0</kbd><kbd>1</kbd><kbd>2</kbd
+        ><kbd>5</kbd> Speed &nbsp; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd
+        ><kbd>D</kbd> Pan
       </div>
     </div>
     <script type="module" src="./src/main.js"></script>
